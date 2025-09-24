@@ -9,7 +9,7 @@ async def main():
     await ws.start()
     args = [
         {
-          "channel": "index-candle1m",
+          "channel": "index-candle5m",
           "instId": "BTC-USD"
         }
     ]

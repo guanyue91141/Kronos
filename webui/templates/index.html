@@ -496,24 +496,24 @@
 
                 <!-- Data Information Display -->
                 <div id="data-info" class="data-info" style="display: none;">
-                    <h3>📊 Data Information</h3>
-                    <p><strong>Rows:</strong> <span id="data-rows">-</span></p>
-                    <p><strong>Columns:</strong> <span id="data-cols">-</span></p>
-                    <p><strong>Time Range:</strong> <span id="data-time-range">-</span></p>
-                    <p><strong>Price Range:</strong> <span id="data-price-range">-</span></p>
-                    <p><strong>Time Frequency:</strong> <span id="data-timeframe">-</span></p>
-                    <p><strong>Prediction Columns:</strong> <span id="data-prediction-cols">-</span></p>
+                    <h3>📊 数据信息</h3>
+                    <p><strong>行数：</strong> <span id="data-rows">-</span></p>
+                    <p><strong>列数：</strong> <span id="data-cols">-</span></p>
+                    <p><strong>时间范围：</strong> <span id="data-time-range">-</span></p>
+                    <p><strong>价格范围：</strong> <span id="data-price-range">-</span></p>
+                    <p><strong>时间频率：</strong> <span id="data-timeframe">-</span></p>
+                    <p><strong>预测列：</strong> <span id="data-prediction-cols">-</span></p>
                 </div>
 
                 <hr style="margin: 20px 0; border: 1px solid #e2e8f0;">
 
                 <!-- Time Window Selector -->
                 <div class="time-window-container">
-                    <h3>⏰ Time Window Selection</h3>
+                    <h3>⏰ 时间窗口选择</h3>
                     <div class="time-window-info">
-                        <span id="window-start">Start: --</span>
-                        <span id="window-end">End: --</span>
-                        <span id="window-size">Window Size: 400+120=520 data points</span>
+                        <span id="window-start">开始：--</span>
+                        <span id="window-end">结束：--</span>
+                        <span id="window-size">窗口大小：400+120=520 个数据点</span>
                     </div>
                     
                     <div class="time-window-slider">
@@ -523,104 +523,104 @@
                             <div class="slider-handle end-handle" id="end-handle"></div>
                         </div>
                         <div class="slider-labels">
-                            <span id="min-label">Earliest</span>
-                            <span id="max-label">Latest</span>
+                            <span id="min-label">最早</span>
+                            <span id="max-label">最新</span>
                         </div>
                     </div>
                     
-                    <small class="form-text">Drag slider to select time window position for 520 data points, green area represents fixed 400+120 data point range</small>
+                    <small class="form-text">拖动滑块选择 520 个数据点的时间位置，绿色区域表示固定的 400+120 窗口</small>
                 </div>
 
                 <!-- Prediction Parameters -->
                 <div class="form-group">
-                    <label for="lookback">Lookback Window Size:</label>
+                    <label for="lookback">历史窗口大小：</label>
                     <input type="number" id="lookback" value="400" readonly>
-                    <small class="form-text">Fixed at 400 data points</small>
+                    <small class="form-text">固定为 400 个数据点</small>
                 </div>
 
                 <div class="form-group">
-                    <label for="pred-len">Prediction Length:</label>
+                    <label for="pred-len">预测长度：</label>
                     <input type="number" id="pred-len" value="120" readonly>
-                    <small class="form-text">Fixed at 120 data points</small>
+                    <small class="form-text">固定为 120 个数据点</small>
                 </div>
 
                 <!-- Prediction Quality Parameters -->
                 <div class="form-group">
-                    <label for="temperature">Prediction Temperature (T):</label>
+                    <label for="temperature">预测温度（T）：</label>
                     <input type="range" id="temperature" value="1.0" min="0.1" max="2.0" step="0.1">
                     <span id="temperature-value">1.0</span>
-                    <small class="form-text">Controls prediction randomness, higher values make predictions more diverse, lower values make predictions more conservative</small>
+                    <small class="form-text">控制随机性：值越高越发散，值越低越保守</small>
                 </div>
 
                 <div class="form-group">
-                    <label for="top-p">Nucleus Sampling Parameter (top_p):</label>
+                    <label for="top-p">核采样参数（top_p）：</label>
                     <input type="range" id="top-p" value="0.9" min="0.1" max="1.0" step="0.1">
                     <span id="top-p-value">0.9</span>
-                    <small class="form-text">Controls prediction diversity, higher values consider broader probability distributions</small>
+                    <small class="form-text">控制多样性：值越高考虑的概率分布越广</small>
                 </div>
 
                 <div class="form-group">
-                    <label for="sample-count">Sample Count:</label>
+                    <label for="sample-count">采样次数：</label>
                     <input type="number" id="sample-count" value="1" min="1" max="5" step="1">
-                    <small class="form-text">Generate multiple prediction samples to improve quality (recommended 1-3)</small>
+                    <small class="form-text">可生成多条样本后取平均（推荐 1-3）</small>
                 </div>
 
                 <button id="predict-btn" class="btn btn-success" disabled>
-                    🔮 Start Prediction
+                    🔮 开始预测
                 </button>
 
                 <!-- Loading Status -->
                 <div id="loading" class="loading">
                     <div class="spinner"></div>
-                    <p>Processing, please wait...</p>
+                    <p>处理中，请稍候...</p>
                 </div>
             </div>
 
             <div class="chart-container">
-                <h2>📈 Prediction Results Chart</h2>
+                <h2>📈 预测结果图表</h2>
                 <div id="chart"></div>
                 
                 <!-- Comparison Analysis -->
                 <div id="comparison-section" class="comparison-section" style="display: none;">
-                    <h3>📊 Prediction vs Actual Data Comparison</h3>
+                    <h3>📊 预测与实际数据对比</h3>
                     <div id="comparison-info" class="comparison-info">
-                        <p><strong>Prediction Type:</strong> <span id="prediction-type">-</span></p>
-                        <p><strong>Comparison Data:</strong> <span id="comparison-data">-</span></p>
+                        <p><strong>预测类型：</strong> <span id="prediction-type">-</span></p>
+                        <p><strong>对比数据：</strong> <span id="comparison-data">-</span></p>
                     </div>
                     
                     <div class="error-stats">
                         <div class="error-stat">
-                            <h4>Mean Absolute Error</h4>
+                            <h4>平均绝对误差</h4>
                             <div class="value" id="mae">-</div>
-                            <div class="unit">Price Units</div>
+                            <div class="unit">价格单位</div>
                         </div>
                         <div class="error-stat">
-                            <h4>Root Mean Square Error</h4>
+                            <h4>均方根误差</h4>
                             <div class="value" id="rmse">-</div>
-                            <div class="unit">Price Units</div>
+                            <div class="unit">价格单位</div>
                         </div>
                         <div class="error-stat">
-                            <h4>Mean Absolute Percentage Error</h4>
+                            <h4>平均绝对百分比误差</h4>
                             <div class="value" id="mape">-</div>
                             <div class="unit">%</div>
                         </div>
                     </div>
                     
                     <div class="error-details">
-                        <h4>Detailed Comparison Data:</h4>
+                        <h4>详细对比数据：</h4>
                         <div style="max-height: 300px; overflow-y: auto;">
                             <table class="comparison-table">
                                 <thead>
                                     <tr>
-                                        <th>Time</th>
-                                        <th>Actual Open</th>
-                                        <th>Predicted Open</th>
-                                        <th>Actual High</th>
-                                        <th>Predicted High</th>
-                                        <th>Actual Low</th>
-                                        <th>Predicted Low</th>
-                                        <th>Actual Close</th>
-                                        <th>Predicted Close</th>
+                                        <th>时间</th>
+                                        <th>实际开盘</th>
+                                        <th>预测开盘</th>
+                                        <th>实际最高</th>
+                                        <th>预测最高</th>
+                                        <th>实际最低</th>
+                                        <th>预测最低</th>
+                                        <th>实际收盘</th>
+                                        <th>预测收盘</th>
                                     </tr>
                                 </thead>
                                 <tbody id="comparison-tbody">
@@ -647,7 +647,7 @@
 
         // Initialize application
         async function initializeApp() {
-            console.log('🚀 Initializing Kronos Web UI...');
+            console.log('🚀 初始化 Kronos Web UI...');
             
             // Load available models
             await loadAvailableModels();
@@ -661,7 +661,7 @@
             // Initialize time slider
             initializeTimeSlider();
             
-            console.log('✅ Application initialization completed');
+                                console.log('✅ 应用初始化完成');
         }
 
         // Load available models
