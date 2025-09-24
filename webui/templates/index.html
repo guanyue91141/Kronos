@@ -493,6 +493,10 @@
                 <button id="load-data-btn" class="btn btn-secondary">
                     📁 加载数据
                 </button>
+                
+                <button id="fetch-data-btn" class="btn btn-secondary">
+                    📥 获取数据
+                </button>
 
                 <!-- Data Information Display -->
                 <div id="data-info" class="data-info" style="display: none;">
@@ -629,6 +633,44 @@
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+        
+        <!-- Fetch Data Modal -->
+        <div id="fetch-data-modal" class="modal" style="display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5);">
+            <div class="modal-content" style="background-color: white; margin: 15% auto; padding: 20px; border: none; border-radius: 10px; width: 500px; max-width: 90%; position: relative;">
+                <span id="close-modal" class="close" style="color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; position: absolute; right: 15px; top: 10px;">&times;</span>
+                <h2 style="margin-top: 0; margin-bottom: 20px; color: #4a5568;">📈 获取新数据</h2>
+                <div class="form-group">
+                    <label for="transaction-name" style="display: block; margin-bottom: 8px; font-weight: 600; color: #4a5568;">交易名称：</label>
+                    <input type="text" id="transaction-name" placeholder="请输入交易名称" list="transaction-list" style="width: 100%; padding: 12px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; transition: border-color 0.3s ease;">
+                    <datalist id="transaction-list">
+                        <option value="BTC-USD-SWAP">
+                        <option value="ETH-USD-SWAP">
+                    </datalist>
+                    <small class="form-text" style="font-size: 12px; color: #718096; margin-top: 5px;">输入交易名称</small>
+                </div>
+                <div class="form-group">
+                    <label style="display: block; margin-bottom: 8px; font-weight: 600; color: #4a5568;">时间等级：</label>
+                    <div id="timeframe-options" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;">
+                        <label style="display: flex; align-items: center; cursor: pointer;"><input type="radio" name="timeframe" value="1m" style="margin-right: 5px;"> 1m</label>
+                        <label style="display: flex; align-items: center; cursor: pointer;"><input type="radio" name="timeframe" value="3m" style="margin-right: 5px;"> 3m</label>
+                        <label style="display: flex; align-items: center; cursor: pointer;"><input type="radio" name="timeframe" value="5m" style="margin-right: 5px;"> 5m</label>
+                        <label style="display: flex; align-items: center; cursor: pointer;"><input type="radio" name="timeframe" value="15m" style="margin-right: 5px;"> 15m</label>
+                        <label style="display: flex; align-items: center; cursor: pointer;"><input type="radio" name="timeframe" value="30m" style="margin-right: 5px;"> 30m</label>
+                        <label style="display: flex; align-items: center; cursor: pointer;"><input type="radio" name="timeframe" value="1H" style="margin-right: 5px;"> 1H</label>
+                        <label style="display: flex; align-items: center; cursor: pointer;"><input type="radio" name="timeframe" value="2H" style="margin-right: 5px;"> 2H</label>
+                        <label style="display: flex; align-items: center; cursor: pointer;"><input type="radio" name="timeframe" value="4H" style="margin-right: 5px;"> 4H</label>
+                        <label style="display: flex; align-items: center; cursor: pointer;"><input type="radio" name="timeframe" value="6H" style="margin-right: 5px;"> 6H</label>
+                        <label style="display: flex; align-items: center; cursor: pointer;"><input type="radio" name="timeframe" value="12H" style="margin-right: 5px;"> 12H</label>
+                        <label style="display: flex; align-items: center; cursor: pointer;"><input type="radio" name="timeframe" value="1D" style="margin-right: 5px;"> 1D</label>
+                        <label style="display: flex; align-items: center; cursor: pointer;"><input type="radio" name="timeframe" value="1W" style="margin-right: 5px;"> 1W</label>
+                        <label style="display: flex; align-items: center; cursor: pointer;"><input type="radio" name="timeframe" value="1M" style="margin-right: 5px;"> 1M</label>
+                        <label style="display: flex; align-items: center; cursor: pointer;"><input type="radio" name="timeframe" value="3M" style="margin-right: 5px;"> 3M</label>
+                    </div>
+                    <small class="form-text" style="font-size: 12px; color: #718096; margin-top: 5px;">选择时间等级</small>
+                </div>
+                <button id="submit-fetch-data" class="btn btn-success" style="margin-top: 20px; width: 100%;">📥 获取数据</button>
             </div>
         </div>
     </div>
@@ -1194,6 +1236,27 @@
             // Load data button
             document.getElementById('load-data-btn').addEventListener('click', loadData);
             
+            // Fetch data button
+            document.getElementById('fetch-data-btn').addEventListener('click', function() {
+                document.getElementById('fetch-data-modal').style.display = 'block';
+            });
+            
+            // Close modal button
+            document.getElementById('close-modal').addEventListener('click', function() {
+                document.getElementById('fetch-data-modal').style.display = 'none';
+            });
+            
+            // Click outside modal to close it
+            window.addEventListener('click', function(event) {
+                const modal = document.getElementById('fetch-data-modal');
+                if (event.target === modal) {
+                    modal.style.display = 'none';
+                }
+            });
+            
+            // Submit fetch data form
+            document.getElementById('submit-fetch-data').addEventListener('click', fetchDataFromAPI);
+            
             // Prediction button
             document.getElementById('predict-btn').addEventListener('click', startPrediction);
             
@@ -1209,6 +1272,68 @@
             // Update slider when lookback window size changes
             document.getElementById('lookback').addEventListener('input', updateSliderFromInputs);
             document.getElementById('pred-len').addEventListener('input', updateSliderFromInputs);
+        }
+
+        // Fetch data from API based on user inputs
+        async function fetchDataFromAPI() {
+            const transactionName = document.getElementById('transaction-name').value.trim();
+            const selectedTimeframe = document.querySelector('input[name="timeframe"]:checked');
+            
+            if (!transactionName) {
+                showStatus('error', '请输入交易名称');
+                return;
+            }
+            
+            if (!selectedTimeframe) {
+                showStatus('error', '请选择时间等级');
+                return;
+            }
+            
+            const timeframe = selectedTimeframe.value;
+            
+            try {
+                showLoading(true);
+                document.getElementById('submit-fetch-data').disabled = true;
+                
+                // Make API call to fetch data
+                const response = await axios.post('/api/fetch-data', {
+                    transaction_name: transactionName,
+                    timeframe: timeframe
+                });
+                
+                if (response.data.success) {
+                    // Update the data file list with the new file
+                    await loadDataFiles();
+                    
+                    // Select the new file in the dropdown
+                    const dataFileSelect = document.getElementById('data-file-select');
+                    dataFileSelect.value = response.data.file_path;
+                    
+                    // Load the new data
+                    currentDataFile = response.data.file_path;
+                    currentDataInfo = response.data.data_info;
+                    showDataInfo(response.data.data_info);
+                    showStatus('success', response.data.message);
+                    
+                    // Update prediction button status
+                    if (modelLoaded) {
+                        document.getElementById('predict-btn').disabled = false;
+                    }
+                    
+                    console.log('✅ Data fetched and loaded successfully:', response.data.data_info);
+                    
+                    // Close the modal
+                    document.getElementById('fetch-data-modal').style.display = 'none';
+                } else {
+                    showStatus('error', response.data.error);
+                }
+            } catch (error) {
+                console.error('❌ Fetch data failed:', error);
+                showStatus('error', `获取数据失败: ${error.response?.data?.error || error.message}`);
+            } finally {
+                showLoading(false);
+                document.getElementById('submit-fetch-data').disabled = false;
+            }
         }
 
         // Display status information

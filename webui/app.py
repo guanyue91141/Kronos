@@ -670,6 +670,64 @@ def get_available_models():
         'model_available': MODEL_AVAILABLE
     })
 
+@app.route('/api/fetch-data', methods=['POST'])
+def fetch_data():
+    """Fetch new market data based on transaction name and timeframe"""
+    try:
+        data = request.get_json()
+        transaction_name = data.get('transaction_name', '').strip()
+        timeframe = data.get('timeframe', '1H')
+        
+        if not transaction_name:
+            return jsonify({'error': 'Transaction name is required'}), 400
+        
+        # Validate timeframe
+        valid_timeframes = ['1m', '3m', '5m', '15m', '30m', '1H', '2H', '4H', '6H', '12H', '1D', '1W', '1M', '3M']
+        if timeframe not in valid_timeframes:
+            return jsonify({'error': f'Invalid timeframe. Valid options: {", ".join(valid_timeframes)}'}), 400
+        
+        # Import res module to fetch real market data
+        import res
+        
+        # Call res.main function to fetch data
+        result = res.main(transaction_name, timeframe)
+        
+        if result.get('success', False):
+            filepath = result['saved_csv']
+            
+            # Load the new data file to get its info
+            df_loaded, error = load_data_file(filepath)
+            if error:
+                return jsonify({'error': f'Failed to load fetched data: {error}'}), 500
+            
+            # Return data information
+            data_info = {
+                'rows': len(df_loaded),
+                'columns': list(df_loaded.columns),
+                'start_date': df_loaded['timestamps'].min().isoformat() if 'timestamps' in df_loaded.columns else 'N/A',
+                'end_date': df_loaded['timestamps'].max().isoformat() if 'timestamps' in df_loaded.columns else 'N/A',
+                'price_range': {
+                    'min': float(df_loaded[['open', 'high', 'low', 'close']].min().min()),
+                    'max': float(df_loaded[['open', 'high', 'low', 'close']].max().max())
+                },
+                'prediction_columns': ['open', 'high', 'low', 'close'] + (['volume'] if 'volume' in df_loaded.columns else []),
+                'timeframe': timeframe
+            }
+            
+            return jsonify({
+                'success': True,
+                'file_path': filepath,
+                'data_info': data_info,
+                'message': f'Successfully fetched and saved data for {transaction_name} at {timeframe} timeframe ({result["rows"]} rows)'
+            })
+        else:
+            error_msg = result.get('error', 'Unknown error occurred while fetching data')
+            return jsonify({'error': f'Failed to fetch data: {error_msg}'}), 500
+        
+    except Exception as e:
+        return jsonify({'error': f'Failed to fetch data: {str(e)}'}), 500
+
+
 @app.route('/api/model-status')
 def get_model_status():
     """Get model status"""
