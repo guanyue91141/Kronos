@@ -75,3 +75,4 @@ venv.bak/
 temp/
 tmp/
 /webui/prediction_results
+/python_okx-0.4.0
