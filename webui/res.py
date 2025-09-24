@@ -148,7 +148,7 @@ def update(default_inst_id, default_bar):
 
 if __name__ == "__main__":
     # 默认参数，可按需修改或扩展为命令行参数
-    default_inst_id = "ETH-USD-SWAP"
+    default_inst_id = "BTC-USD-SWAP"
     default_bar = "5m"
     #main(default_inst_id, default_bar)
     update(default_inst_id, default_bar)
