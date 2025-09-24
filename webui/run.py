@@ -76,7 +76,7 @@ def main():
         
         # Auto-open browser
         time.sleep(2)
-        webbrowser.open('http://localhost:7070')
+        #webbrowser.open('http://localhost:7070')
         
         # Start Flask application
         app.run(debug=True, host='0.0.0.0', port=7070)
