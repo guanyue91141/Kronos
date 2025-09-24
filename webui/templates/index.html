@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kronos Financial Prediction Web UI</title>
+    <title>Kronos 金融预测可视化</title>
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <style>
@@ -441,57 +441,57 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>🚀 Kronos Financial Prediction Web UI</h1>
-            <p>AI-based financial K-line data prediction analysis platform</p>
+            <h1>🚀 Kronos 金融预测可视化</h1>
+            <p>基于 AI 的 K 线数据预测分析平台</p>
         </div>
 
         <div class="main-content">
             <div class="control-panel">
-                <h2>🎯 Control Panel</h2>
+                <h2>🎯 控制面板</h2>
 
                 <!-- Model Selection -->
                 <div class="form-group">
-                    <label for="model-select">Select Model:</label>
+                    <label for="model-select">选择模型：</label>
                     <select id="model-select">
-                        <option value="">Please load available models first</option>
+                        <option value="">请先加载可用模型</option>
                     </select>
-                    <small class="form-text">Select the Kronos model to use</small>
+                    <small class="form-text">选择要使用的 Kronos 模型</small>
                 </div>
 
                 <!-- Device Selection -->
                 <div class="form-group">
-                    <label for="device-select">Select Device:</label>
+                    <label for="device-select">运行设备：</label>
                     <select id="device-select">
                         <option value="cpu">CPU</option>
-                        <option value="cuda">CUDA (NVIDIA GPU)</option>
-                        <option value="mps">MPS (Apple Silicon)</option>
+                        <option value="cuda">CUDA（NVIDIA GPU）</option>
+                        <option value="mps">MPS（Apple 芯片）</option>
                     </select>
-                    <small class="form-text">Select the device to run the model on</small>
+                    <small class="form-text">选择模型运行的设备</small>
                 </div>
 
                 <!-- Model Status -->
                 <div id="model-status" class="status info" style="display: none;">
-                    Model status information
+                    模型状态信息
                 </div>
 
                 <!-- Load Model Button -->
                 <button id="load-model-btn" class="btn btn-secondary">
-                    🔄 Load Model
+                    🔄 加载模型
                 </button>
 
                 <hr style="margin: 20px 0; border: 1px solid #e2e8f0;">
 
                 <!-- Data File Selection -->
                 <div class="form-group">
-                    <label for="data-file-select">Select Data File:</label>
+                    <label for="data-file-select">选择数据文件：</label>
                     <select id="data-file-select">
-                        <option value="">Please load data file list first</option>
+                        <option value="">请先加载数据文件列表</option>
                     </select>
-                    <small class="form-text">Select K-line data file from data directory</small>
+                    <small class="form-text">从 data 目录选择 K 线数据文件</small>
                 </div>
 
                 <button id="load-data-btn" class="btn btn-secondary">
-                    📁 Load Data
+                    📁 加载数据
                 </button>
 
                 <!-- Data Information Display -->
