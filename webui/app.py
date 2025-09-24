@@ -230,7 +230,7 @@ def create_prediction_chart(df, pred_df, lookback, pred_len, actual_df=None, his
         high=historical_df['high'],
         low=historical_df['low'],
         close=historical_df['close'],
-        name='Historical Data (400 data points)',
+        name='历史数据（400个数据点）',
         increasing_line_color='#26A69A',
         decreasing_line_color='#EF5350'
     ))
@@ -258,7 +258,7 @@ def create_prediction_chart(df, pred_df, lookback, pred_len, actual_df=None, his
             high=pred_df['high'],
             low=pred_df['low'],
             close=pred_df['close'],
-            name='Prediction Data (120 data points)',
+            name='预测数据（120个数据点）',
             increasing_line_color='#66BB6A',
             decreasing_line_color='#FF7043'
         ))
@@ -291,7 +291,7 @@ def create_prediction_chart(df, pred_df, lookback, pred_len, actual_df=None, his
             high=actual_df['high'],
             low=actual_df['low'],
             close=actual_df['close'],
-            name='Actual Data (120 data points)',
+            name='实际数据（120个数据点）',
             increasing_line_color='#FF9800',
             decreasing_line_color='#F44336'
         ))
