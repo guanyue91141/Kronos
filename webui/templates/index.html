@@ -538,14 +538,18 @@
                 <!-- Prediction Parameters -->
                 <div class="form-group">
                     <label for="lookback">历史窗口大小：</label>
-                    <input type="number" id="lookback" value="400" readonly>
+                    <input type="number" id="lookback" value="400" >
                     <small class="form-text">固定为 400 个数据点</small>
                 </div>
 
                 <div class="form-group">
                     <label for="pred-len">预测长度：</label>
-                    <input type="number" id="pred-len" value="120" readonly>
+                    <input type="number" id="pred-len" value="120" >
                     <small class="form-text">固定为 120 个数据点</small>
+                </div>
+
+                <div class="form-group">
+                        <input type="checkbox" id="future-mode" /> 预测未来
                 </div>
 
                 <!-- Prediction Quality Parameters -->
@@ -1088,20 +1092,21 @@
                 
                 const lookback = parseInt(document.getElementById('lookback').value);
                 const predLen = parseInt(document.getElementById('pred-len').value);
+                const futureMode = document.getElementById('future-mode').checked;
                 
                 // Get selected time range from time window slider
                 const startHandle = document.getElementById('start-handle');
                 const startPercentage = parseFloat(startHandle.style.left) / 100;
                 
-                if (!sliderData) {
+                if (!sliderData && !futureMode) {
                     showStatus('error', 'Time window slider not initialized');
                     return;
                 }
                 
                 // Calculate selected time range
-                const totalTime = sliderData.endDate.getTime() - sliderData.startDate.getTime();
-                const startTime = sliderData.startDate.getTime() + (totalTime * startPercentage);
-                const startDate = new Date(startTime);
+                const totalTime = sliderData ? (sliderData.endDate.getTime() - sliderData.startDate.getTime()) : 0;
+                const startTime = sliderData ? (sliderData.startDate.getTime() + (totalTime * startPercentage)) : 0;
+                const startDate = sliderData ? new Date(startTime) : null;
                 
                 // Get prediction quality parameters
                 const temperature = parseFloat(document.getElementById('temperature').value);
@@ -1112,11 +1117,15 @@
                     file_path: currentDataFile,
                     lookback: lookback,
                     pred_len: predLen,
-                    start_date: startDate.toISOString().slice(0, 16), // Format as YYYY-MM-DDTHH:MM
                     temperature: temperature,
                     top_p: topP,
-                    sample_count: sampleCount
+                    sample_count: sampleCount,
+                    future_mode: futureMode
                 };
+                
+                if (!futureMode) {
+                    predictionParams.start_date = startDate.toISOString().slice(0, 16);
+                }
                 
                 console.log('🚀 Starting prediction, parameters:', predictionParams);
                 

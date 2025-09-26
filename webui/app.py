@@ -410,6 +410,9 @@ def predict():
         lookback = int(data.get('lookback', 400))
         pred_len = int(data.get('pred_len', 120))
         
+        # Future forecasting mode toggle
+        future_mode = bool(data.get('future_mode', False))
+        
         # Get prediction quality parameters
         temperature = float(data.get('temperature', 1.0))
         top_p = float(data.get('top_p', 0.9))
@@ -438,37 +441,57 @@ def predict():
                 # Process time period selection
                 start_date = data.get('start_date')
                 
-                if start_date:
-                    # Custom time period - fix logic: use data within selected window
-                    start_dt = pd.to_datetime(start_date)
-                    
-                    # Find data after start time
-                    mask = df['timestamps'] >= start_dt
-                    time_range_df = df[mask]
-                    
-                    # Ensure sufficient data: lookback + pred_len
-                    if len(time_range_df) < lookback + pred_len:
-                        return jsonify({'error': f'Insufficient data from start time {start_dt.strftime("%Y-%m-%d %H:%M")}, need at least {lookback + pred_len} data points, currently only {len(time_range_df)} available'}), 400
-                    
-                    # Use first lookback data points within selected window for prediction
-                    x_df = time_range_df.iloc[:lookback][required_cols]
-                    x_timestamp = time_range_df.iloc[:lookback]['timestamps']
-                    
-                    # Use last pred_len data points within selected window as actual values
-                    y_timestamp = time_range_df.iloc[lookback:lookback+pred_len]['timestamps']
-                    
-                    # Calculate actual time period length
-                    start_timestamp = time_range_df['timestamps'].iloc[0]
-                    end_timestamp = time_range_df['timestamps'].iloc[lookback+pred_len-1]
-                    time_span = end_timestamp - start_timestamp
-                    
-                    prediction_type = f"Kronos model prediction (within selected window: first {lookback} data points for prediction, last {pred_len} data points for comparison, time span: {time_span})"
+                # If future_mode is enabled, ignore start_date and use last lookback window
+                if future_mode:
+                    # last lookback points
+                    x_df = df.iloc[-lookback:][required_cols]
+                    x_timestamp = df.iloc[-lookback:]['timestamps']
+                    # y_timestamp: future timeline after the last timestamp
+                    last_timestamp = df['timestamps'].iloc[-1]
+                    time_diff = df['timestamps'].iloc[1] - df['timestamps'].iloc[0] if len(df) > 1 else pd.Timedelta(hours=1)
+                    y_timestamp = pd.date_range(
+                        start=last_timestamp + time_diff,
+                        periods=pred_len,
+                        freq=time_diff
+                    )
+                    prediction_type = "Kronos model prediction (future 120 points beyond dataset end)"
+                    # Ensure timestamps are Series if needed
+                    if isinstance(x_timestamp, pd.DatetimeIndex):
+                        x_timestamp = pd.Series(x_timestamp, name='timestamps')
+                    if isinstance(y_timestamp, pd.DatetimeIndex):
+                        y_timestamp = pd.Series(y_timestamp, name='timestamps')
                 else:
-                    # Use latest data
-                    x_df = df.iloc[:lookback][required_cols]
-                    x_timestamp = df.iloc[:lookback]['timestamps']
-                    y_timestamp = df.iloc[lookback:lookback+pred_len]['timestamps']
-                    prediction_type = "Kronos model prediction (latest data)"
+                    if start_date:
+                        # Custom time period - fix logic: use data within selected window
+                        start_dt = pd.to_datetime(start_date)
+                        
+                        # Find data after start time
+                        mask = df['timestamps'] >= start_dt
+                        time_range_df = df[mask]
+                        
+                        # Ensure sufficient data: lookback + pred_len
+                        if len(time_range_df) < lookback + pred_len:
+                            return jsonify({'error': f'Insufficient data from start time {start_dt.strftime("%Y-%m-%d %H:%M")}, need at least {lookback + pred_len} data points, currently only {len(time_range_df)} available'}), 400
+                        
+                        # Use first lookback data points within selected window for prediction
+                        x_df = time_range_df.iloc[:lookback][required_cols]
+                        x_timestamp = time_range_df.iloc[:lookback]['timestamps']
+                        
+                        # Use last pred_len data points within selected window as actual values
+                        y_timestamp = time_range_df.iloc[lookback:lookback+pred_len]['timestamps']
+                        
+                        # Calculate actual time period length
+                        start_timestamp = time_range_df['timestamps'].iloc[0]
+                        end_timestamp = time_range_df['timestamps'].iloc[lookback+pred_len-1]
+                        time_span = end_timestamp - start_timestamp
+                        
+                        prediction_type = f"Kronos model prediction (within selected window: first {lookback} data points for prediction, last {pred_len} data points for comparison, time span: {time_span})"
+                    else:
+                        # Use latest data window from beginning for comparison-style mode
+                        x_df = df.iloc[:lookback][required_cols]
+                        x_timestamp = df.iloc[:lookback]['timestamps']
+                        y_timestamp = df.iloc[lookback:lookback+pred_len]['timestamps']
+                        prediction_type = "Kronos model prediction (latest data)"
                 
                 # Ensure timestamps are Series format, not DatetimeIndex, to avoid .dt attribute error in Kronos model
                 if isinstance(x_timestamp, pd.DatetimeIndex):
@@ -495,48 +518,52 @@ def predict():
         actual_data = []
         actual_df = None
         
-        if start_date:  # Custom time period
-            # Fix logic: use data within selected window
-            # Prediction uses first 400 data points within selected window
-            # Actual data should be last 120 data points within selected window
-            start_dt = pd.to_datetime(start_date)
-            
-            # Find data starting from start_date
-            mask = df['timestamps'] >= start_dt
-            time_range_df = df[mask]
-            
-            if len(time_range_df) >= lookback + pred_len:
-                # Get last 120 data points within selected window as actual values
-                actual_df = time_range_df.iloc[lookback:lookback+pred_len]
+        if not future_mode:
+            if start_date:  # Custom time period
+                # Fix logic: use data within selected window
+                # Prediction uses first 400 data points within selected window
+                # Actual data should be last 120 data points within selected window
+                start_dt = pd.to_datetime(start_date)
                 
-                for i, (_, row) in enumerate(actual_df.iterrows()):
-                    actual_data.append({
-                        'timestamp': row['timestamps'].isoformat(),
-                        'open': float(row['open']),
-                        'high': float(row['high']),
-                        'low': float(row['low']),
-                        'close': float(row['close']),
-                        'volume': float(row['volume']) if 'volume' in row else 0,
-                        'amount': float(row['amount']) if 'amount' in row else 0
-                    })
-        else:  # Latest data
-            # Prediction uses first 400 data points
-            # Actual data should be 120 data points after first 400 data points
-            if len(df) >= lookback + pred_len:
-                actual_df = df.iloc[lookback:lookback+pred_len]
-                for i, (_, row) in enumerate(actual_df.iterrows()):
-                    actual_data.append({
-                        'timestamp': row['timestamps'].isoformat(),
-                        'open': float(row['open']),
-                        'high': float(row['high']),
-                        'low': float(row['low']),
-                        'close': float(row['close']),
-                        'volume': float(row['volume']) if 'volume' in row else 0,
-                        'amount': float(row['amount']) if 'amount' in row else 0
-                    })
+                # Find data starting from start_date
+                mask = df['timestamps'] >= start_dt
+                time_range_df = df[mask]
+                
+                if len(time_range_df) >= lookback + pred_len:
+                    # Get last 120 data points within selected window as actual values
+                    actual_df = time_range_df.iloc[lookback:lookback+pred_len]
+                    
+                    for i, (_, row) in enumerate(actual_df.iterrows()):
+                        actual_data.append({
+                            'timestamp': row['timestamps'].isoformat(),
+                            'open': float(row['open']),
+                            'high': float(row['high']),
+                            'low': float(row['low']),
+                            'close': float(row['close']),
+                            'volume': float(row['volume']) if 'volume' in row else 0,
+                            'amount': float(row['amount']) if 'amount' in row else 0
+                        })
+            else:  # Latest data
+                # Prediction uses first 400 data points
+                # Actual data should be 120 data points after first 400 data points
+                if len(df) >= lookback + pred_len:
+                    actual_df = df.iloc[lookback:lookback+pred_len]
+                    for i, (_, row) in enumerate(actual_df.iterrows()):
+                        actual_data.append({
+                            'timestamp': row['timestamps'].isoformat(),
+                            'open': float(row['open']),
+                            'high': float(row['high']),
+                            'low': float(row['low']),
+                            'close': float(row['close']),
+                            'volume': float(row['volume']) if 'volume' in row else 0,
+                            'amount': float(row['amount']) if 'amount' in row else 0
+                        })
         
         # Create chart - pass historical data start position
-        if start_date:
+        if future_mode:
+            # Show the last lookback points as history
+            historical_start_idx = max(0, len(df) - lookback)
+        elif start_date:
             # Custom time period: find starting position of historical data in original df
             start_dt = pd.to_datetime(start_date)
             mask = df['timestamps'] >= start_dt
@@ -549,7 +576,16 @@ def predict():
         
         # Prepare prediction result data - fix timestamp calculation logic
         if 'timestamps' in df.columns:
-            if start_date:
+            if future_mode:
+                # Future timestamps already computed from the last timestamp of df
+                last_timestamp = df['timestamps'].iloc[-1]
+                time_diff = df['timestamps'].iloc[1] - df['timestamps'].iloc[0] if len(df) > 1 else pd.Timedelta(hours=1)
+                future_timestamps = pd.date_range(
+                    start=last_timestamp + time_diff,
+                    periods=pred_len,
+                    freq=time_diff
+                )
+            elif start_date:
                 # Custom time period: use selected window data to calculate timestamps
                 start_dt = pd.to_datetime(start_date)
                 mask = df['timestamps'] >= start_dt
@@ -604,7 +640,8 @@ def predict():
                     'temperature': temperature,
                     'top_p': top_p,
                     'sample_count': sample_count,
-                    'start_date': start_date if start_date else 'latest'
+                    'start_date': (start_date if (start_date and not future_mode) else 'future' if future_mode else 'latest'),
+                    'future_mode': future_mode
                 }
             )
         except Exception as e:
