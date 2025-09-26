@@ -110,6 +110,79 @@
             color: #667eea;
         }
 
+        /* Switch container for future mode */
+        .switch-container {
+            display: inline-block;
+            position: relative;
+        }
+
+        .switch-container input[type="checkbox"] {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .switch-toggle {
+            position: relative;
+            display: inline-block;
+            width: 70px;
+            height: 30px;
+            background-color: #e2e8f0;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .switch-slider {
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 30px;
+            height: 30px;
+            background-color: white;
+            border-radius: 50%;
+            transition: transform 0.3s;
+        }
+
+        .switch-text-off,
+        .switch-text-on {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .switch-text-off {
+            left: 8px;
+            color: #718096;
+        }
+
+        .switch-text-on {
+            right: 8px;
+            color: white;
+            opacity: 0;
+            transform: translateY(-50%) scale(0.8);
+        }
+
+        .switch-container input[type="checkbox"]:checked + .switch-toggle {
+            background-color: #48bb78;
+        }
+
+        .switch-container input[type="checkbox"]:checked + .switch-toggle .switch-slider {
+            transform: translateX(26px);
+        }
+
+        .switch-container input[type="checkbox"]:checked + .switch-toggle .switch-text-on {
+            opacity: 1;
+        }
+
+        .switch-container input[type="checkbox"]:checked + .switch-toggle .switch-text-off {
+            opacity: 0;
+        }
+
+        
+
         .form-text {
             font-size: 12px;
             color: #718096;
@@ -549,7 +622,17 @@
                 </div>
 
                 <div class="form-group">
-                        <input type="checkbox" id="future-mode" /> 预测未来
+                    <div style="display: flex; align-items: center;">
+                        <label for="future-mode" style="margin-right: 15px; margin-bottom: 0;">预测未来：</label>
+                        <div class="switch-container">
+                            <input type="checkbox" id="future-mode" />
+                            <label for="future-mode" class="switch-toggle">
+                                <span class="switch-slider"></span>
+                                <span class="switch-text-off">关闭</span>
+                                <span class="switch-text-on">开启</span>
+                            </label>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- Prediction Quality Parameters -->
