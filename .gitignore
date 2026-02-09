@@ -45,7 +45,6 @@ Desktop.ini
 
 # Data files (large files)
 *.feather
-*.csv
 *.parquet
 *.h5
 *.hdf5
@@ -74,5 +73,4 @@ venv.bak/
 *.temp
 temp/
 tmp/
-/webui/prediction_results
-/python_okx-0.4.0
+.python-version
