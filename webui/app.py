@@ -4,6 +4,7 @@ import numpy as np
 import json
 import plotly.graph_objects as go
 import plotly.utils
+import xlsxwriter
 from flask import Flask, render_template, request, jsonify
 from flask_cors import CORS
 import sys
@@ -206,19 +207,129 @@ def save_prediction_results(file_path, prediction_type, prediction_results, actu
         print(f"Failed to save prediction results: {e}")
         return None
 
+def save_prediction_results_excel(file_path, prediction_results, actual_data, input_data):
+    """Save prediction results to excel file"""
+    try:
+        # Create excel directory
+        excel_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'excel')
+        os.makedirs(excel_dir, exist_ok=True)
+        
+        # Generate filename
+        timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+        base_name = os.path.basename(file_path).split('.')[0]
+        filename = f'{base_name}_{timestamp}.xlsx'
+        filepath = os.path.join(excel_dir, filename)
+        
+        # Create Excel writer
+        with pd.ExcelWriter(filepath, engine='xlsxwriter') as writer:
+            # 1. Prepare data for Sheet 1 (Data)
+            
+            # Historical data (last 100 points for context)
+            hist_len = min(100, len(input_data))
+            hist_df = input_data.iloc[-hist_len:].copy()
+            hist_df['type'] = 'History'
+            
+            # Ensure timestamps are in consistent format
+            if 'timestamps' in hist_df.columns:
+                hist_df['timestamp'] = hist_df['timestamps'].dt.strftime('%Y-%m-%d %H:%M:%S')
+            
+            # Prediction data
+            pred_data_list = []
+            if prediction_results:
+                for p in prediction_results:
+                    row = p.copy()
+                    row['type'] = 'Prediction'
+                    pred_data_list.append(row)
+            pred_df = pd.DataFrame(pred_data_list)
+            
+            # Actual data (if available)
+            actual_df = pd.DataFrame()
+            if actual_data:
+                actual_data_list = []
+                for a in actual_data:
+                    row = a.copy()
+                    row['type'] = 'Actual'
+                    actual_data_list.append(row)
+                actual_df = pd.DataFrame(actual_data_list)
+                
+            # Combine all data
+            combined_df = pd.concat([hist_df, pred_df, actual_df], ignore_index=True)
+            
+            # Select relevant columns
+            valid_cols = ['timestamp', 'type', 'open', 'high', 'low', 'close', 'volume']
+            available_cols = [c for c in valid_cols if c in combined_df.columns]
+            final_df = combined_df[available_cols]
+            
+            # Write to Sheet 1
+            final_df.to_excel(writer, sheet_name='Sheet1', index=False)
+            
+            # 2. Create Sheet 2 (Chart) and add Line Chart
+            workbook = writer.book
+            worksheet = workbook.add_worksheet('Sheet2')
+            chart = workbook.add_chart({'type': 'line'})
+            
+            # Data ranges
+            # Row count (excluding header)
+            n_hist = len(hist_df)
+            n_pred = len(pred_df)
+            n_actual = len(actual_df)
+            
+            # Excel rows are 0-indexed. Header is row 0. Data starts row 1.
+            # History: row 1 to n_hist
+            # Prediction: row n_hist+1 to n_hist+n_pred
+            # Actual: row n_hist+n_pred+1 to end
+            
+            # Column indices: timestamp=0, type=1, close=5 (assuming standard columns)
+            col_timestamp = available_cols.index('timestamp')
+            col_close = available_cols.index('close') if 'close' in available_cols else 5
+            
+            # Add History series
+            if n_hist > 0:
+                chart.add_series({
+                    'name':       'History',
+                    'categories': ['Sheet1', 1, col_timestamp, n_hist, col_timestamp],
+                    'values':     ['Sheet1', 1, col_close, n_hist, col_close],
+                    'line':       {'color': 'gray', 'dash_type': 'dot'},
+                })
+                
+            # Add Prediction series
+            if n_pred > 0:
+                chart.add_series({
+                    'name':       'Prediction',
+                    'categories': ['Sheet1', n_hist+1, col_timestamp, n_hist+n_pred, col_timestamp],
+                    'values':     ['Sheet1', n_hist+1, col_close, n_hist+n_pred, col_close],
+                    'line':       {'color': 'green', 'width': 2.5},
+                })
+                
+            # Add Actual series
+            if n_actual > 0:
+                chart.add_series({
+                    'name':       'Actual',
+                    'categories': ['Sheet1', n_hist+n_pred+1, col_timestamp, n_hist+n_pred+n_actual, col_timestamp],
+                    'values':     ['Sheet1', n_hist+n_pred+1, col_close, n_hist+n_pred+n_actual, col_close],
+                    'line':       {'color': 'blue', 'width': 2},
+                })
+            
+            chart.set_title({'name': 'Price Prediction vs Actual'})
+            chart.set_x_axis({'name': 'Time'})
+            chart.set_y_axis({'name': 'Price'})
+            chart.set_size({'width': 1000, 'height': 600})
+            
+            worksheet.insert_chart('A1', chart)
+            
+        print(f"Excel saved to: {filepath}")
+        return filepath
+        
+    except Exception as e:
+        print(f"Failed to save excel: {e}")
+        return None
+
 def create_prediction_chart(df, pred_df, lookback, pred_len, actual_df=None, historical_start_idx=0):
     """Create prediction chart"""
-    # Use specified historical data start position, not always from the beginning of df
-    if historical_start_idx + lookback + pred_len <= len(df):
-        # Display lookback historical points + pred_len prediction points starting from specified position
-        historical_df = df.iloc[historical_start_idx:historical_start_idx+lookback]
-        prediction_range = range(historical_start_idx+lookback, historical_start_idx+lookback+pred_len)
-    else:
-        # If data is insufficient, adjust to maximum available range
-        available_lookback = min(lookback, len(df) - historical_start_idx)
-        available_pred_len = min(pred_len, max(0, len(df) - historical_start_idx - available_lookback))
-        historical_df = df.iloc[historical_start_idx:historical_start_idx+available_lookback]
-        prediction_range = range(historical_start_idx+available_lookback, historical_start_idx+available_lookback+available_pred_len)
+    # Use specified historical data start position
+    # Calculate available historical data
+    available_lookback = min(lookback, len(df) - historical_start_idx)
+    historical_df = df.iloc[historical_start_idx:historical_start_idx+available_lookback]
     
     # Create chart
     fig = go.Figure()
@@ -646,6 +757,13 @@ def predict():
             )
         except Exception as e:
             print(f"Failed to save prediction results: {e}")
+            
+        # Save to Excel
+        excel_path = None
+        try:
+            excel_path = save_prediction_results_excel(file_path, prediction_results, actual_data, x_df)
+        except Exception as e:
+            print(f"Failed to save excel: {e}")
         
         return jsonify({
             'success': True,

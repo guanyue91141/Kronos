@@ -1,6 +1,8 @@
 numpy
 pandas
-torch>=2.0.0
+torch==2.10.0+cu130
+torchvision==0.25.0+cu130
+torchaudio==2.10.0+cu130
 
 einops==0.8.1
 huggingface_hub==0.33.1

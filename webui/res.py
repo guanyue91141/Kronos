@@ -1,138 +1,94 @@
-import okx.MarketData as MarketData
-import time
-import csv
-import random
-from datetime import datetime
 import os
+import sys
+import pandas as pd
+from datetime import datetime
 
-REQUEST_INTERVAL_SEC = 0
+# Add project root directory to path to import prediction_crypto
+current_dir = os.path.dirname(os.path.abspath(__file__))
+project_root = os.path.dirname(current_dir)
+sys.path.append(project_root)
 
-
-def main(inst_id, bar, limit="100", pages=20, after=None):
+try:
+    from prediction_crypto import fetch_binance_klines
+except ImportError:
+    # Attempt absolute import if relative fails
     try:
-        flag = "0"
-        marketDataAPI = MarketData.MarketAPI(flag=flag)
+        sys.path.append("h:/Kronos")
+        from prediction_crypto import fetch_binance_klines
+    except ImportError:
+        print("Warning: Could not import prediction_crypto.fetch_binance_klines")
 
-        all_rows = []
-        seen_ts = set()
-
-        if after is None:
-            after = str(int(time.time() * 1000))
+def main(inst_id, bar):
+    """
+    Fetch crypto data using prediction_crypto.py logic (Binance API).
+    
+    Args:
+        inst_id (str): Trading pair symbol (e.g., 'BTCUSDT')
+        bar (str): Timeframe interval (e.g., '1h', '1d', '5m')
         
-        resp = marketDataAPI.get_mark_price_candlesticks(
-            instId=inst_id,
-            after=after,
-            bar=bar,
-            limit=limit
-        )
-        page_rows = resp.get("data", []) if isinstance(resp, dict) else []
-        for r in page_rows:
-            ts = r[0]
-            if ts not in seen_ts:
-                seen_ts.add(ts)
-                all_rows.append(r)
-
-        for _ in range(pages - 1):
-            if not all_rows:
-                break
-            min_ts = min(int(r[0]) for r in all_rows)
-            time.sleep(REQUEST_INTERVAL_SEC)
-            resp = marketDataAPI.get_mark_price_candlesticks(
-                instId=inst_id,
-                after=str(min_ts),
-                bar=bar,
-                limit=limit
-            )
-            page_rows = resp.get("data", []) if isinstance(resp, dict) else []
-            if not page_rows:
-                break
-            for r in page_rows:
-                ts = r[0]
-                if ts not in seen_ts:
-                    seen_ts.add(ts)
-                    all_rows.append(r)
-
-        safe_inst = inst_id.replace('-', '_')
-        output_path = f"data/{safe_inst}_{bar}_mark.csv"
+    Returns:
+        dict: Result with status and file path
+    """
+    try:
+        # Normalize inputs
+        # Remove hyphens/underscores for Binance symbol format (e.g., BTC-USDT -> BTCUSDT)
+        symbol = inst_id.replace('-', '').replace('_', '').upper()
         
-        if os.path.exists(output_path):
-            with open(output_path, mode="r", newline="", encoding="utf-8") as f:
-                reader = csv.reader(f)
-                header = next(reader, None)
-                existing_rows = []
-                for row in reader:
-                    if row:  
-                        existing_rows.append(row)
+        # Map timeframe to Binance format if needed
+        # Kronos webui might pass '1H', '1D', '1W', '1M' -> Convert to lowercase for Binance '1h', '1d', etc.
+        interval = bar.lower()
+        
+        # Call fetch function from prediction_crypto
+        # Fetch generous amount of data to ensure lookback is covered
+        df = fetch_binance_klines(symbol=symbol, interval=interval, limit=1000)
+        
+        if df.empty:
+            return {"success": False, "error": f"Failed to fetch data for {symbol} {interval}"}
             
-            for row in existing_rows:
-                ts_str = row[0]
-                dt = datetime.strptime(ts_str, "%Y-%m-%d %H:%M:%S")
-                ts_ms = int(dt.timestamp() * 1000)
-                if str(ts_ms) not in seen_ts:
-                    o, h, l, c = row[1], row[2], row[3], row[4]
-                    existing_data = [str(ts_ms), o, h, l, c]
-                    all_rows.append(existing_data)
-                    seen_ts.add(str(ts_ms))
+        # Ensure data directory exists
+        data_dir = os.path.join(project_root, 'data')
+        os.makedirs(data_dir, exist_ok=True)
         
-        all_rows_sorted = sorted(all_rows, key=lambda r: int(r[0]))
+        # Save to CSV
+        safe_inst = symbol
+        output_filename = f"{safe_inst}_{interval}.csv"
+        output_path = os.path.join(data_dir, output_filename)
         
-        unique_rows = []
-        seen_unique_ts = set()
-        for row in all_rows_sorted:
-            ts = row[0]
-            if ts not in seen_unique_ts:
-                seen_unique_ts.add(ts)
-                unique_rows.append(row)
+        # Rename date column to timestamps to match Kronos expectation
+        if 'date' in df.columns:
+            df = df.rename(columns={'date': 'timestamps'})
+            # Adjust timezone from UTC to UTC+8
+            df['timestamps'] = pd.to_datetime(df['timestamps']) + pd.Timedelta(hours=8)
+            
+        # Ensure columns are in correct order
+        cols = ["timestamps", "open", "high", "low", "close", "volume", "amount"]
+        # Filter for existing columns only, filling missing with 0 if criticals exist
+        available_cols = [c for c in cols if c in df.columns]
+        df_save = df[available_cols].copy()
         
-        all_rows_sorted = unique_rows
-
-        with open(output_path, mode="w", newline="", encoding="utf-8") as f:
-            writer = csv.writer(f)
-            writer.writerow(["timestamps", "open", "high", "low", "close", "volume", "amount"])
-            for r in all_rows_sorted:
-                ts_ms = int(r[0])
-                o, h, l, c = r[1], r[2], r[3], r[4]
-                volume = random.randint(1000, 5000)
-                amount = volume*random.randint(1100,1500)
-                ts_str = datetime.utcfromtimestamp(ts_ms / 1000).strftime("%Y-%m-%d %H:%M:%S")
-                writer.writerow([ts_str, o, h, l, c, volume, amount])
-
-        return {"success": True, "saved_csv": output_path, "rows": len(all_rows_sorted)}
+        # Fill missing volume/amount if they don't exist (though fetch_binance_klines handles this)
+        if 'volume' not in df_save.columns: df_save['volume'] = 0
+        if 'amount' not in df_save.columns: df_save['amount'] = 0
+            
+        # Sort by timestamp ascending
+        df_save = df_save.sort_values('timestamps')
+        
+        df_save.to_csv(output_path, index=False)
+        
+        return {
+            "success": True, 
+            "saved_csv": output_path, 
+            "rows": len(df_save),
+            "message": f"Successfully fetched {len(df_save)} rows for {symbol}"
+        }
+        
     except Exception as e:
         return {"success": False, "error": str(e)}
 
-
+# Keep update function for compatibility if needed, but redirect to main
 def update(default_inst_id, default_bar):
-    try:
-        safe_inst = default_inst_id.replace('-', '_')
-        output_path = f"data/{safe_inst}_{default_bar}_mark.csv"
-        
-        if not os.path.exists(output_path):
-            print(f"File {output_path} does not exist, will fetch data from current time")
-            return main(default_inst_id, default_bar)
-        
-        with open(output_path, mode="r", newline="", encoding="utf-8") as f:
-            reader = csv.reader(f)
-            header = next(reader, None)
-            rows = list(reader)
-        
-        if not rows:
-            print(f"File {output_path} is empty, will fetch data from current time")
-            return main(default_inst_id, default_bar)
-
-        oldest_row = rows[0]
-        oldest_timestamp_str = oldest_row[0]
-        
-        dt = datetime.strptime(oldest_timestamp_str, "%Y-%m-%d %H:%M:%S")
-        print(dt)
-        oldest_timestamp_ms = int(dt.timestamp() * 1000)
-        
-        return main(default_inst_id, default_bar, after=str(oldest_timestamp_ms))
-    except Exception as e:
-        return {"success": False, "error": str(e)}
-
+    return main(default_inst_id, default_bar)
 
 if __name__ == "__main__":
-    default_inst_id = "BTC-USD-SWAP"
-    default_bar = "5m"
-    update(default_inst_id, default_bar)
+    # Test
+    print(main("BTCUSDT", "1d"))
